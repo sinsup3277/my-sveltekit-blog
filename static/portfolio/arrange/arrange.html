@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>순서 편집기 (저장 기능)</title>
+    <style>
+        :root {
+            --main-color: #4a90e2;
+            --secondary-color: #6c757d;
+            --danger-color: #dc3545;
+            --danger-color-dark: #c82333;
+            --light-color-bg: #f4f7fa;
+            --light-color-block: #ffffff;
+            --dark-color-text: #333333;
+            --border-color: #dbe3eb;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--light-color-bg);
+            color: var(--dark-color-text);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: var(--main-color);
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        #copy-all-btn {
+            background-color: var(--secondary-color);
+        }
+
+        #copy-all-btn:hover {
+            background-color: #5a6268;
+        }
+        
+        #copy-all-btn:disabled {
+            background-color: #9db0be;
+            cursor: not-allowed;
+        }
+
+        #reset-btn {
+            background-color: var(--danger-color);
+        }
+        #reset-btn:hover {
+            background-color: var(--danger-color-dark);
+        }
+
+        #block-container {
+            width: 100%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px; 
+        }
+
+        .block {
+            background-color: var(--light-color-block);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            cursor: move;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .block:hover {
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+        }
+        
+        .block[contenteditable]:focus {
+            outline: 2px solid var(--main-color);
+            cursor: text;
+        }
+
+        .block.dragging {
+            opacity: 0.5;
+            background: #eef4ff;
+            transform: scale(1.02);
+        }
+
+        /* Add Button Area */
+        #add-block-area {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 15px;
+        }
+
+        #add-block-btn {
+            width: 100%;
+            background-color: var(--light-color-block);
+            color: var(--main-color);
+            border: 2px dashed var(--border-color);
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #add-block-btn:hover {
+            background-color: #eef4ff;
+            border-color: var(--main-color);
+        }
+
+        /* Delete Button */
+        #delete-button {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: var(--danger-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: pointer;
+            transform: translate(-50%, 100px) scale(0);
+            transition: transform 0.3s ease, background-color 0.2s ease;
+        }
+
+        #delete-button.visible {
+            transform: translate(-50%, 0) scale(1);
+        }
+
+        #delete-button.drag-over {
+            background-color: var(--danger-color-dark);
+            transform: translate(-50%, 0) scale(1.2);
+        }
+
+        #delete-button svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        /* Settings Dropdown */
+        #settings-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #settings-btn {
+            background-color: var(--main-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #settings-dropdown {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 5px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px var(--shadow-color);
+            padding: 10px;
+            width: 220px;
+            z-index: 100;
+            display: none; /* Initially hidden */
+        }
+
+        #settings-dropdown.visible {
+            display: block;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Toggle Switch CSS */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: var(--main-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .slider.round {
+            border-radius: 24px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="settings-container">
+        <button id="settings-btn">설정</button>
+        <div id="settings-dropdown">
+            <div class="setting-item">
+                <label for="paste-plain-toggle">스타일 없이 붙여넣기</label>
+                <label class="switch">
+                    <input type="checkbox" id="paste-plain-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <h1>드래그 & 드롭 편집기</h1>
+
+    <div id="controls">
+        <button id="copy-all-btn" class="btn">전체 복사하기</button>
+        <button id="reset-btn" class="btn">초기화</button>
+    </div>
+
+    <div id="block-container">
+        <!-- Blocks will be loaded here by JavaScript -->
+    </div>
+
+    <div id="add-block-area">
+        <button id="add-block-btn">+ 새 블록 추가</button>
+    </div>
+
+    <div id="delete-button">
+        <svg viewBox="0 0 24 24"><path d="M9,3V4H4V6H5V19C5,20.1 5.9,21 7,21H17C18.1,21 19,20.1 19,19V6H20V4H15V3H9M7,6H17V19H7V6M9,8V17H11V8H9M13,8V17H15V8H13Z" /></svg>
+    </div>
+
+    <script>
+        const container = document.getElementById('block-container');
+        const addBlockBtn = document.getElementById('add-block-btn');
+        const copyAllBtn = document.getElementById('copy-all-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const settingsContainer = document.getElementById('settings-container');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsDropdown = document.getElementById('settings-dropdown');
+        const pastePlainToggle = document.getElementById('paste-plain-toggle');
+        const deleteButton = document.getElementById('delete-button');
+
+        let pasteAsPlainText = false;
+        let draggedElement = null;
+        let scrollVelocity = 0;
+        let scrollInterval = null;
+
+        // --- Functions ---
+
+        const addNewBlock = (content, shouldFocus = true) => {
+            const newBlock = document.createElement('div');
+            newBlock.classList.add('block');
+            newBlock.setAttribute('contenteditable', 'true');
+            newBlock.setAttribute('draggable', 'true');
+            newBlock.innerHTML = content;
+            
+            addBlockEventListeners(newBlock);
+            container.appendChild(newBlock);
+
+            if (shouldFocus) {
+                newBlock.focus();
+                newBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            saveState();
+        };
+
+        const scrollLoop = () => {
+            if (scrollVelocity !== 0) {
+                window.scrollBy(0, scrollVelocity);
+            }
+            scrollInterval = requestAnimationFrame(scrollLoop);
+        };
+
+        // --- State Management ---
+
+        const saveState = () => {
+            const blocks = document.querySelectorAll('#block-container .block');
+            const blocksContent = [...blocks].map(block => block.innerHTML);
+            localStorage.setItem('arrange-editor-blocks', JSON.stringify(blocksContent));
+        };
+
+        const loadState = () => {
+            const savedStateJSON = localStorage.getItem('arrange-editor-blocks');
+            container.innerHTML = '';
+
+            if (savedStateJSON) {
+                const blocksContent = JSON.parse(savedStateJSON);
+                if (blocksContent.length > 0) {
+                    blocksContent.forEach(content => addNewBlock(content, false));
+                } else {
+                    addNewBlock('첫 번째 블록입니다. 내용을 수정하고 순서를 바꿔보세요.', false);
+                }
+            } else {
+                addNewBlock('첫 번째 블록입니다. 내용을 수정하고 순서를 바꿔보세요.', false);
+                addNewBlock('두 번째 블록입니다. 마우스로 끌어서 위치를 이동할 수 있습니다.', false);
+            }
+        };
+
+        // --- Event Listeners ---
+
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsDropdown.classList.toggle('visible');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!settingsContainer.contains(e.target)) {
+                settingsDropdown.classList.remove('visible');
+            }
+            const isBlock = e.target.closest('.block');
+            const isControl = e.target.closest('#controls, #settings-container, #add-block-area');
+            if (!isBlock && !isControl && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+                window.getSelection().removeAllRanges();
+            }
+        });
+
+        pastePlainToggle.addEventListener('change', (e) => {
+            pasteAsPlainText = e.target.checked;
+            localStorage.setItem('arrange-editor-paste-plain', e.target.checked);
+        });
+
+        addBlockBtn.addEventListener('click', () => {
+            addNewBlock('새로운 블록입니다. 내용을 입력하세요.', true);
+        });
+        
+        copyAllBtn.addEventListener('click', () => {
+            copyAllBlocksToClipboard();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (confirm('정말로 모든 내용을 초기화하시겠습니까? 저장된 내용이 삭제됩니다.')) {
+                localStorage.removeItem('arrange-editor-blocks');
+                loadState();
+            }
+        });
+
+        document.addEventListener('dragover', e => {
+            if (!draggedElement) return;
+
+            const scrollZone = 100; // Pixels from edge
+            const maxScrollSpeed = 15; // Max speed in pixels per frame
+
+            if (e.clientY < scrollZone) {
+                const speed = (scrollZone - e.clientY) / scrollZone; // 0 to 1
+                scrollVelocity = -(speed * maxScrollSpeed);
+            } else if (window.innerHeight - e.clientY < scrollZone) {
+                const speed = (scrollZone - (window.innerHeight - e.clientY)) / scrollZone; // 0 to 1
+                scrollVelocity = speed * maxScrollSpeed;
+            } else {
+                scrollVelocity = 0;
+            }
+        });
+
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (!draggedElement) return;
+            
+            const afterElement = getDragAfterElement(container, e.clientY);
+            if (afterElement == null) {
+                container.appendChild(draggedElement);
+            } else {
+                container.insertBefore(draggedElement, afterElement);
+            }
+        });
+
+        container.addEventListener('input', () => {
+            setTimeout(saveState, 100);
+        });
+
+        container.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('block')) {
+                draggedElement = e.target;
+                draggedElement.classList.add('dragging');
+                deleteButton.classList.add('visible');
+                scrollInterval = requestAnimationFrame(scrollLoop);
+            }
+        });
+
+        const stopDrag = () => {
+            if (draggedElement) {
+                draggedElement.classList.remove('dragging');
+            }
+            draggedElement = null;
+            deleteButton.classList.remove('visible');
+            deleteButton.classList.remove('drag-over');
+            cancelAnimationFrame(scrollInterval);
+            scrollVelocity = 0;
+            saveState();
+        }
+
+        container.addEventListener('dragend', stopDrag);
+
+        // --- Delete Button Listeners ---
+        deleteButton.addEventListener('dragover', e => {
+            e.preventDefault();
+            deleteButton.classList.add('drag-over');
+        });
+
+        deleteButton.addEventListener('dragleave', () => {
+            deleteButton.classList.remove('drag-over');
+        });
+
+        deleteButton.addEventListener('drop', e => {
+            e.preventDefault();
+            if (draggedElement) {
+                draggedElement.remove();
+                stopDrag();
+            }
+        });
+
+        // --- Utility Functions ---
+        
+        const copyAllBlocksToClipboard = () => {
+            const blocks = document.querySelectorAll('#block-container .block');
+            const allText = [...blocks]
+                .map(block => block.textContent.trim())
+                .join('\n\n');
+
+            if (!allText) return;
+
+            navigator.clipboard.writeText(allText).then(() => {
+                const originalText = copyAllBtn.textContent;
+                copyAllBtn.textContent = '복사 완료!';
+                copyAllBtn.disabled = true;
+                setTimeout(() => {
+                    copyAllBtn.textContent = originalText;
+                    copyAllBtn.disabled = false;
+                }, 2000);
+            }).catch(err => {
+                console.error('클립보드 복사에 실패했습니다:', err);
+                alert('복사에 실패했습니다. 이 기능은 보안(HTTPS) 연결에서 더 잘 동작합니다.');
+            });
+        };
+
+        const handlePaste = (e) => {
+            if (!pasteAsPlainText) return;
+            e.preventDefault();
+            const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+        };
+
+        const addBlockEventListeners = (element) => {
+            element.addEventListener('paste', handlePaste);
+
+            const selectAllText = () => {
+                requestAnimationFrame(() => {
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(element);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                });
+            };
+
+            // Select text on click, which doesn't fire when dragging.
+            element.addEventListener('click', selectAllText);
+        };
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.block:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // --- Initial Setup ---
+        const savedPasteSetting = localStorage.getItem('arrange-editor-paste-plain');
+        if (savedPasteSetting === 'true') {
+            pastePlainToggle.checked = true;
+            pasteAsPlainText = true;
+        }
+
+        loadState();
+
+    </script>
+
+</body>
+</html>

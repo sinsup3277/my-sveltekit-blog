@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알람 박스 복사 버튼</title>
+    <style>
+        .alert-box {
+            background: powderblue; /*default background color*/
+            border: 1px solid rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            display: block;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>파스텔톤 알람 박스 복사하기</h1>
+<!--------------------------여기에 코드를 작성하세요------------------------->
+    <br>
+    <button id="id-button" onclick="addAlertBox('아이디가 없습니다')">아이디 에러</button>
+    <button id="pw-button" onclick="addAlertBox('비밀번호가 틀렸습니다')">비밀번호 에러</button>
+
+    <script>
+            // 버튼에 마우스 오버 이벤트 추가
+            var color = 'powderblue'; // 기본 색상
+            document.getElementById("id-button").addEventListener("mouseover", function(){
+                color = getRandomLightColor();
+                this.style.backgroundColor = color;
+            });
+            document.getElementById("id-button").addEventListener("mouseout", function(){
+                this.style.backgroundColor = "";
+            });
+            document.getElementById("pw-button").addEventListener("mouseover", function(){
+                color = getRandomLightColor();
+                this.style.backgroundColor = color;
+            });
+            document.getElementById("pw-button").addEventListener("mouseout", function(){
+                this.style.backgroundColor = "";
+            });
+            // 랜덤 색상 생성 함수
+            function getRandomLightColor() {
+                const h = Math.floor(Math.random() * 360); // 색상 (0-359)
+                const s = Math.floor(Math.random() * 30) + 30; // 채도 (30-59, 옅은 색 범위)
+                const l = Math.floor(Math.random() * 30) + 70; // 명도 (70-99, 밝은 색 범위)
+                return `hsl(${h}, ${s}%, ${l}%)`;
+            }
+            function addAlertBox(text){
+                const alertBox = document.createElement('div');
+                alertBox.className = 'alert-box';
+                alertBox.innerHTML = `
+                    <span>${text}</span>
+                    <button onclick="removeAlertBox.call(this)">X</button>`;
+                    alertBox.style.backgroundColor = color; // 버튼 색상 적용
+                document.body.appendChild(alertBox);
+            }
+            function removeAlertBox() {
+                this.parentElement.remove(); // 부모 요소인 alert-box를 제거
+            }
+    </script>
+
+<!------------------------------------------------------------------------->
+</body>
+</html>
