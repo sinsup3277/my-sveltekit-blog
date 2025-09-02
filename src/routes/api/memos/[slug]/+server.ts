@@ -1,5 +1,16 @@
 import { json } from '@sveltejs/kit';
-import { updatePost, deletePost } from '$lib/posts';
+import { getRawPost, updatePost, deletePost } from '$lib/posts';
+
+/**
+ * 원본 메모 내용을 가져옵니다. (수정용)
+ */
+export async function GET({ params }) {
+    const post = await getRawPost(params.slug);
+    if (!post) {
+        return json({ message: 'Post not found' }, { status: 404 });
+    }
+    return json(post);
+}
 
 /**
  * 메모를 수정합니다.

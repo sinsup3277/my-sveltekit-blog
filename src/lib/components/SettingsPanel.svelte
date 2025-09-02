@@ -6,11 +6,26 @@
 
 	const dispatch = createEventDispatcher();
 
-    const themes = [
-        { name: 'light', label: '라이트', color: '#f8f9fa' },
-        { name: 'dark', label: '다크', color: '#1a1a1a' },
-        { name: 'sepia', label: '세피아', color: '#f4e8d5' },
-        { name: 'slate', label: '슬레이트', color: '#2d3748' },
+    // Group the themes for better UI organization
+    const themeGroups = [
+        {
+            title: '주요 테마',
+            themes: [
+                { name: 'light', label: '라이트', color: '#f8f9fa' },
+                { name: 'dark', label: '다크', color: '#1a1a1a' },
+                { name: 'sepia', label: '세피아', color: '#f4e8d5' },
+                { name: 'slate', label: '슬레이트', color: '#2d3748' },
+            ]
+        },
+        {
+            title: '파스텔 배경',
+            themes: [
+                { name: 'pastel-blue', label: '블루', color: '#f0f8ff' },
+                { name: 'pastel-beige', label: '베이지', color: '#faebd7' },
+                { name: 'pastel-green', label: '그린', color: '#f0fff0' },
+                { name: 'pastel-lavender', label: '라벤더', color: '#e6e6fa' },
+            ]
+        }
     ];
 
 	function openIpAliasModal() {
@@ -30,22 +45,25 @@
             <button on:click={openIpAliasModal}>IP 별명 관리</button>
         </li>
     </ul>
-    <div class="divider"></div>
-    <div class="theme-section">
-        <h5>테마 변경</h5>
-        <div class="theme-options">
-            {#each themes as themeItem}
-                <button
-                    class="theme-swatch"
-                    class:selected={$theme === themeItem.name}
-                    style="background-color: {themeItem.color};"
-                    on:click={() => selectTheme(themeItem.name)}
-                    aria-label="{themeItem.label} 테마"
-                    title="{themeItem.label}"
-                ></button>
-            {/each}
+    
+    {#each themeGroups as group}
+        <div class="divider"></div>
+        <div class="theme-section">
+            <h5>{group.title}</h5>
+            <div class="theme-options">
+                {#each group.themes as themeItem}
+                    <button
+                        class="theme-swatch"
+                        class:selected={$theme === themeItem.name}
+                        style="background-color: {themeItem.color};"
+                        on:click={() => selectTheme(themeItem.name)}
+                        aria-label="{themeItem.label} 테마"
+                        title="{themeItem.label}"
+                    ></button>
+                {/each}
+            </div>
         </div>
-    </div>
+    {/each}
 </div>
 {/if}
 
@@ -72,6 +90,10 @@
     }
     h4 {
         border-bottom: 1px solid var(--border-color);
+    }
+    h5 {
+        font-weight: 500;
+        opacity: 0.8;
     }
     ul {
         list-style: none;
@@ -114,8 +136,9 @@
         border-radius: 50%;
         cursor: pointer;
         border: 2px solid transparent;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: all 0.2s ease;
         padding: 0; /* Reset padding */
+        outline-offset: 2px;
     }
 
     .theme-swatch:hover {
@@ -124,6 +147,6 @@
 
     .theme-swatch.selected {
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 2px var(--primary-color);
+        outline: 2px solid var(--primary-color);
     }
 </style>

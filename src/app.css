@@ -13,7 +13,7 @@
     --link-hover-color: #0056b3;
 }
 
-/* Dark Theme */
+/* --- Main Themes --- */
 html[data-theme="dark"] {
     --background-color: #1a1a1a;
     --text-color: #e0e0e0;
@@ -24,7 +24,6 @@ html[data-theme="dark"] {
     --link-hover-color: #60a5fa;
 }
 
-/* Sepia Theme */
 html[data-theme="sepia"] {
     --background-color: #f4e8d5;
     --text-color: #433422;
@@ -35,7 +34,6 @@ html[data-theme="sepia"] {
     --link-hover-color: #dd6b20;
 }
 
-/* Slate Theme */
 html[data-theme="slate"] {
     --background-color: #2d3748;
     --text-color: #e2e8f0;
@@ -45,6 +43,14 @@ html[data-theme="slate"] {
     --link-color: #4299e1;
     --link-hover-color: #63b3ed;
 }
+
+/* --- Pastel Background Themes --- */
+/* These inherit from :root (light theme) and only change the background */
+html[data-theme="pastel-blue"] { --background-color: #f0f8ff; }
+html[data-theme="pastel-beige"] { --background-color: #faebd7; }
+html[data-theme="pastel-green"] { --background-color: #f0fff0; }
+html[data-theme="pastel-lavender"] { --background-color: #e6e6fa; }
+
 
 *,
 *::before,

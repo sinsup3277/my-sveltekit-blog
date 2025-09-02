@@ -83,6 +83,10 @@
                             <button on:click={() => handleDeleteClick(ip)} class="btn-danger">삭제</button>
                         </div>
                     </div>
+                {:else}
+                    <div class="empty-message">
+                        <p>저장된 별명이 없습니다.</p>
+                    </div>
                 {/each}
             </div>
             <form on:submit|preventDefault={handleSubmit}>

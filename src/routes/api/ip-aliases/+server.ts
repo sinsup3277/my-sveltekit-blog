@@ -5,7 +5,7 @@ import { getAliases, setAlias, deleteAlias } from '$lib/ipManager';
  * 모든 IP 별명 목록을 반환합니다.
  */
 export async function GET() {
-    const aliases = getAliases();
+    const aliases = await getAliases();
     return json(aliases);
 }
 
@@ -19,7 +19,7 @@ export async function POST({ request }) {
         return json({ message: 'IP and name are required' }, { status: 400 });
     }
 
-    setAlias(ip, name);
+    await setAlias(ip, name);
 
     return json({ message: 'Alias saved successfully' }, { status: 201 });
 }
@@ -34,7 +34,7 @@ export async function DELETE({ request }) {
         return json({ message: 'IP is required' }, { status: 400 });
     }
 
-    deleteAlias(ip);
+    await deleteAlias(ip);
 
     return json({ message: 'Alias deleted successfully' });
 }
