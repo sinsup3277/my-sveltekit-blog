@@ -12,7 +12,7 @@ export async function PUT({ params, request }) {
         return json({ message: 'Title and content are required' }, { status: 400 });
     }
 
-    const updatedPost = updatePost(slug, title, content);
+    const updatedPost = await updatePost(slug, title, content);
 
     if (!updatedPost) {
         return json({ message: 'Post not found' }, { status: 404 });
@@ -26,7 +26,7 @@ export async function PUT({ params, request }) {
  */
 export async function DELETE({ params }) {
     const { slug } = params;
-    const result = deletePost(slug);
+    const result = await deletePost(slug);
 
     if (!result.success) {
         return json({ message: 'Post not found' }, { status: 404 });

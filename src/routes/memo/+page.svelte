@@ -26,6 +26,13 @@
 			memos = [...memos, newMemo].sort((a, b) => a.title.localeCompare(b.title));
 			title = '';
 			content = '';
+		} else {
+			if (res.status === 409) {
+				const error = await res.json();
+				alert(error.message);
+			} else {
+				alert('메모 저장에 실패했습니다.');
+			}
 		}
 	}
 </script>

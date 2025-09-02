@@ -2,6 +2,16 @@
 	import '../app.css';
 	import IpAliasManager from '$lib/components/IpAliasManager.svelte';
 	import SettingsPanel from '$lib/components/SettingsPanel.svelte';
+    import theme from '$lib/stores/theme';
+    import { onMount } from 'svelte';
+
+    // Apply the theme on component mount and whenever it changes
+    onMount(() => {
+        const unsubscribe = theme.subscribe(value => {
+            document.documentElement.setAttribute('data-theme', value);
+        });
+        return unsubscribe; // Clean up the subscription
+    });
 
 	let isMenuOpen = false;
 	let showSettingsPanel = false;

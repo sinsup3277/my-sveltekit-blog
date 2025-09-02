@@ -13,6 +13,39 @@
     --link-hover-color: #0056b3;
 }
 
+/* Dark Theme */
+html[data-theme="dark"] {
+    --background-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --primary-color: #3b82f6;
+    --border-color: #404040;
+    --card-bg: #2a2a2a;
+    --link-color: #3b82f6;
+    --link-hover-color: #60a5fa;
+}
+
+/* Sepia Theme */
+html[data-theme="sepia"] {
+    --background-color: #f4e8d5;
+    --text-color: #433422;
+    --primary-color: #c05621;
+    --border-color: #dcd1b3;
+    --card-bg: #fdf2e3;
+    --link-color: #c05621;
+    --link-hover-color: #dd6b20;
+}
+
+/* Slate Theme */
+html[data-theme="slate"] {
+    --background-color: #2d3748;
+    --text-color: #e2e8f0;
+    --primary-color: #4299e1;
+    --border-color: #4a5568;
+    --card-bg: #4a5568;
+    --link-color: #4299e1;
+    --link-hover-color: #63b3ed;
+}
+
 *,
 *::before,
 *::after {
@@ -33,6 +66,7 @@ body {
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Typography */

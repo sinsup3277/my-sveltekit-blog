@@ -3,7 +3,7 @@ import { getPost } from '$lib/posts';
 import { getDisplayName } from '$lib/ipManager';
 
 export async function load({ params }) {
-    const post = getPost(params.slug);
+    const post = await getPost(params.slug);
 
     if (!post) {
         throw error(404, 'Not found');

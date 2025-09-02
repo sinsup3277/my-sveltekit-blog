@@ -1,92 +1,123 @@
-import fs from 'fs';
-import path from 'path';
+import { put, del, list, head } from '@vercel/blob';
 import matter from 'gray-matter';
 import { marked } from 'marked';
+import { BLOB_READ_WRITE_TOKEN } from '$env/static/private';
+import * as cache from '$lib/cache';
 
-const memosDir = path.resolve('memos');
-
-// `memos` 디렉토리가 없으면 생성
-if (!fs.existsSync(memosDir)) {
-    fs.mkdirSync(memosDir, { recursive: true });
+if (!BLOB_READ_WRITE_TOKEN) {
+    throw new Error("Missing BLOB_READ_WRITE_TOKEN environment variable");
 }
 
-/**
- * 모든 메모의 목록을 가져옵니다.
- */
+const blobOptions = {
+    token: BLOB_READ_WRITE_TOKEN,
+};
+
+const POSTS_CACHE_KEY = 'posts';
+const getPostContentCacheKey = (slug: string) => `post-content:${slug}`;
+
+function getPostContent(slug: string) {
+    const decodedSlug = decodeURIComponent(slug);
+    const pathname = `${decodedSlug}.md`;
+    return cache.get(getPostContentCacheKey(decodedSlug), async () => {
+        console.log(`Fetching from Blob: ${pathname}`);
+        const blob = await head(pathname, blobOptions);
+        const response = await fetch(blob.downloadUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch blob content for ${slug}`);
+        }
+        return response.text();
+    });
+}
+
 export function getPosts() {
-    const files = fs.readdirSync(memosDir).filter(file => file.endsWith('.md'));
-    const memos = files.map(file => {
-        const slug = file.replace(/\.md$/, '');
-        const filePath = path.join(memosDir, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        const { data } = matter(fileContent);
+    return cache.get(POSTS_CACHE_KEY, async () => {
+        try {
+            console.log('Fetching posts list from Blob...');
+            const { blobs } = await list({ ...blobOptions, mode: 'folded' });
+            const memos = blobs
+                .filter(blob => blob.pathname.endsWith('.md'))
+                .map(blob => {
+                    const slug = blob.pathname.replace(/\.md$/, '');
+                    return {
+                        slug,
+                        title: blob.customMetadata?.title || slug.replace(/-/g, ' '),
+                    };
+                })
+                .sort((a, b) => a.title.localeCompare(b.title));
+
+            console.log(`Pre-warming cache for ${memos.length} posts.`)
+            for (const memo of memos) {
+                getPostContent(memo.slug).catch(err => {
+                    console.error(`Failed to pre-warm cache for ${memo.slug}:`, err);
+                });
+            }
+
+            return memos;
+        } catch (error) {
+            console.error("Error listing blobs:", error);
+            return [];
+        }
+    });
+}
+
+export async function getPost(slug) {
+    try {
+        const fileContent = await getPostContent(slug);
+        const { data, content } = matter(fileContent);
+        const html = marked(content);
+        const decodedSlug = decodeURIComponent(slug);
+
         return {
-            slug,
-            title: data.title || slug.replace(/-/g, ' '), // frontmatter의 title을 사용
+            slug: decodedSlug,
+            title: data.title || decodedSlug.replace(/-/g, ' '),
+            html,
+            date: data.date || null,
+            ip: data.ip || null,
         };
-    }).sort((a, b) => a.title.localeCompare(b.title)); // 제목순으로 정렬
-
-    return memos;
-}
-
-/**
- * 특정 slug의 메모를 가져와 HTML로 렌더링합니다.
- * @param {string} slug 
- */
-export function getPost(slug) {
-    const decodedSlug = decodeURIComponent(slug);
-    const filePath = path.join(memosDir, `${decodedSlug}.md`);
-
-    if (!fs.existsSync(filePath)) {
-        return null;
+    } catch (error) {
+        if (error.message.includes('404') || error.message.includes('not found')) {
+            return null;
+        }
+        console.error(`Error getting post "${slug}":`, error);
+        throw error;
     }
-
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const { data, content } = matter(fileContent);
-    
-    const html = marked(content);
-
-    return {
-        slug: decodedSlug, // slug를 반환값에 추가
-        title: data.title || decodedSlug.replace(/-/g, ' '),
-        html,
-        date: data.date || null,
-        ip: data.ip || null,
-    };
 }
 
-/**
- * 특정 slug 메모의 원본 마크다운 내용을 가져옵니다.
- * @param {string} slug 
- */
-export function getRawPost(slug) {
-    const decodedSlug = decodeURIComponent(slug);
-    const filePath = path.join(memosDir, `${decodedSlug}.md`);
+export async function getRawPost(slug) {
+    try {
+        const fileContent = await getPostContent(slug);
+        const { data, content } = matter(fileContent);
+        const decodedSlug = decodeURIComponent(slug);
 
-    if (!fs.existsSync(filePath)) {
-        return null;
+        return {
+            title: data.title || decodedSlug.replace(/-/g, ' '),
+            content,
+        };
+    } catch (error) {
+        if (error.message.includes('404') || error.message.includes('not found')) {
+            return null;
+        }
+        console.error(`Error getting raw post "${slug}":`, error);
+        throw error;
     }
-
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const { data, content } = matter(fileContent);
-
-    return {
-        title: data.title || decodedSlug.replace(/-/g, ' '),
-        content,
-    };
 }
 
-/**
- * 새 메모를 생성합니다.
- * @param {string} title 
- * @param {string} content 
- * @param {string} ip
- */
-export function createPost(title, content, ip) {
+export async function createPost(title, content, ip) {
     const slug = title.toLowerCase()
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9\uAC00-\uD7A3-]/g, '');
-    const filePath = path.join(memosDir, `${slug}.md`);
+    const pathname = `${slug}.md`;
+
+    try {
+        await head(pathname, blobOptions);
+        // If head succeeds, the blob exists.
+        throw new Error('DUPLICATE_TITLE');
+    } catch (error) {
+        // The error thrown for a 404 has a constructor.name of 'BlobNotFoundError'.
+        if (error.constructor.name !== 'BlobNotFoundError') {
+            throw error;
+        }
+    }
 
     const fileContent = `---
 title: "${title}"
@@ -96,48 +127,79 @@ ip: "${ip}"
 
 ${content}`;
 
-    fs.writeFileSync(filePath, fileContent);
+    await put(pathname, fileContent, {
+        access: 'public',
+        ...blobOptions,
+        customMetadata: { title },
+    });
+
+    cache.set(getPostContentCacheKey(slug), Promise.resolve(fileContent));
+
+    const postsPromise = cache.get(POSTS_CACHE_KEY, async () => null);
+    postsPromise.then(cachedPosts => {
+        if (cachedPosts) {
+            const newPostEntry = { slug, title };
+            const newPosts = [...cachedPosts, newPostEntry].sort((a, b) => a.title.localeCompare(b.title));
+            cache.set(POSTS_CACHE_KEY, Promise.resolve(newPosts));
+            console.log('Optimistically updated posts list cache.');
+        } else {
+            cache.invalidate(POSTS_CACHE_KEY);
+        }
+    });
 
     return { slug, title };
 }
 
-/**
- * 특정 slug의 메모를 수정합니다.
- * @param {string} slug
- * @param {string} newTitle
- * @param {string} newContent
- */
-export function updatePost(slug, newTitle, newContent) {
+export async function updatePost(slug, newTitle, newContent) {
     const decodedSlug = decodeURIComponent(slug);
-    const filePath = path.join(memosDir, `${decodedSlug}.md`);
-    if (!fs.existsSync(filePath)) {
-        return null;
+    const pathname = `${decodedSlug}.md`;
+
+    try {
+        const originalFileContent = await getPostContent(slug);
+        const { data: originalData } = matter(originalFileContent);
+        
+        const newData = { ...originalData, title: newTitle };
+        const newFileContent = matter.stringify(newContent, newData);
+
+        await put(pathname, newFileContent, {
+            access: 'public',
+            allowOverwrite: true,
+            ...blobOptions,
+            customMetadata: { title: newTitle },
+        });
+
+        cache.invalidate(POSTS_CACHE_KEY);
+        cache.set(getPostContentCacheKey(decodedSlug), Promise.resolve(newFileContent));
+
+        return { slug: decodedSlug };
+
+    } catch (error) {
+        if (error.message.includes('404') || error.message.includes('not found')) {
+            return null; // Memo not found
+        }
+        console.error(`Error updating post "${slug}":`, error);
+        throw error;
     }
-
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const { data: originalData } = matter(fileContent);
-
-    const newData = {
-        ...originalData,
-        title: newTitle,
-    };
-
-    const newFileContent = matter.stringify(newContent, newData);
-    fs.writeFileSync(filePath, newFileContent);
-
-    return { slug: decodedSlug };
 }
 
-/**
- * 특정 slug의 메모를 삭제합니다.
- * @param {string} slug 
- */
-export function deletePost(slug) {
+export async function deletePost(slug) {
     const decodedSlug = decodeURIComponent(slug);
-    const filePath = path.join(memosDir, `${decodedSlug}.md`);
-    if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        return { success: true };
+    const pathname = `${decodedSlug}.md`;
+    
+    try {
+        const { blobs } = await list({ prefix: pathname, ...blobOptions });
+        const blobToDelete = blobs.find(b => b.pathname === pathname);
+
+        if (blobToDelete) {
+            await del(blobToDelete.url, { ...blobOptions });
+            cache.invalidate(POSTS_CACHE_KEY);
+            cache.invalidate(getPostContentCacheKey(decodedSlug));
+            return { success: true };
+        }
+        return { success: true, message: 'Memo not found, no action needed.' };
+
+    } catch (error) {
+        console.error(`Error deleting post "${slug}":`, error);
+        return { success: false, error: error.message };
     }
-    return { success: false };
 }
