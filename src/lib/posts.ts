@@ -1,8 +1,15 @@
+
 import { put, del, list, head } from '@vercel/blob';
 import matter from 'gray-matter';
 import { marked } from 'marked';
 import { BLOB_READ_WRITE_TOKEN } from '$env/static/private';
 import * as cache from '$lib/cache';
+import { JSDOM } from 'jsdom';
+import DOMPurify from 'dompurify';
+
+// Create a DOMPurify instance for the server environment
+const window = new JSDOM('').window;
+const purify = DOMPurify(window);
 
 if (!BLOB_READ_WRITE_TOKEN) {
     throw new Error("Missing BLOB_READ_WRITE_TOKEN environment variable");
@@ -64,7 +71,11 @@ export async function getPost(slug) {
     try {
         const fileContent = await getPostContent(slug);
         const { data, content } = matter(fileContent);
-        const html = marked(content);
+        
+        // Convert Markdown to HTML, then sanitize it
+        const rawHtml = marked(content);
+        const html = purify.sanitize(rawHtml);
+
         const decodedSlug = decodeURIComponent(slug);
 
         return {

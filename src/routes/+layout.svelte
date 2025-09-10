@@ -5,6 +5,8 @@
     import theme from '$lib/stores/theme';
     import { onMount } from 'svelte';
 
+    export let data; // From +layout.server.ts
+
     // Apply the theme on component mount and whenever it changes
     onMount(() => {
         const unsubscribe = theme.subscribe(value => {
@@ -28,7 +30,28 @@
 		showIpAliasModal = true;
 		showSettingsPanel = false; // 패널은 닫음
 	}
+
+    async function handleLogout() {
+        const res = await fetch('/api/auth/logout', { method: 'POST' });
+        if (res.ok) {
+            window.location.href = '/'; // Reload to clear state
+        } else {
+            alert('로그아웃에 실패했습니다.');
+        }
+    }
 </script>
+
+<!-- Auth Status UI -->
+<div class="auth-status">
+    {#if data.isAdmin}
+        <span class="status-dot admin"></span>
+        <span>관리자 모드</span>
+        <button on:click={handleLogout} class="logout-button">로그아웃</button>
+    {:else}
+        <span class="status-dot guest"></span>
+        <span>게스트</span>
+    {/if}
+</div>
 
 <!-- IP 별명 관리 모달 -->
 <IpAliasManager isOpen={showIpAliasModal} on:close={() => showIpAliasModal = false} />
@@ -84,6 +107,47 @@
 </footer>
 
 <style>
+    .auth-status {
+        position: fixed;
+        top: 10px;
+        right: 2rem;
+        z-index: 1001; /* header보다 위에 오도록 */
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    .status-dot.admin {
+        background-color: #28a745; /* Green */
+    }
+    .status-dot.guest {
+        background-color: #6c757d; /* Gray */
+    }
+    .logout-button {
+        background: transparent;
+        border: none;
+        color: var(--primary-color);
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 0;
+    }
+    .logout-button:hover {
+        text-decoration: underline;
+    }
+
 	:global(body) {
 		display: flex;
 		flex-direction: column;
@@ -196,6 +260,10 @@
 	}
 
 	@media (max-width: 768px) {
+        .auth-status {
+            top: 5px;
+            right: 5rem; /* Adjust position for mobile */
+        }
 		.nav-links-desktop {
 			display: none;
 		}
