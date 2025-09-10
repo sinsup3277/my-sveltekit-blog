@@ -1,16 +1,20 @@
+
 import { json } from '@sveltejs/kit';
 import { getAliases, setAlias, deleteAlias } from '$lib/ipManager';
 import { z } from 'zod';
 
+// Regex to validate both IPv4 and IPv6 addresses
+const IP_ADDRESS_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^((([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4})|(([0-9a-fA-F]{1,4}:){1,7}:)|(([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4})|(([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2})|(([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3})|(([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4})|(([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5})|([0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6}))|(:(:[0-9a-fA-F]{1,4}){1,7})|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|(::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
+
 // Schema for creating/updating an alias
 const aliasSchema = z.object({
-    ip: z.string().ip({ message: "유효하지 않은 IP 주소 형식입니다." }),
+    ip: z.string().regex(IP_ADDRESS_REGEX, { message: "유효하지 않은 IP 주소 형식입니다." }),
     name: z.string().min(1, { message: "이름을 입력해주세요." }).max(50, { message: "이름은 50자를 넘을 수 없습니다." }),
 });
 
 // Schema for deleting an alias
 const deleteAliasSchema = z.object({
-    ip: z.string().ip({ message: "유효하지 않은 IP 주소 형식입니다." }),
+    ip: z.string().regex(IP_ADDRESS_REGEX, { message: "유효하지 않은 IP 주소 형식입니다." }),
 });
 
 /**
